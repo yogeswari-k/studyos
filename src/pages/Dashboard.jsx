@@ -94,3 +94,4 @@ export default function Dashboard({ screenTime = 0, formattedScreenTime = '0m', 
     </div>
   )
 }
+
