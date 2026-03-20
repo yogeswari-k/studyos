@@ -10,58 +10,75 @@ import Health from './pages/Health'
 import Goals from './pages/Goals'
 import { GoalReminder } from './components/GoalReminder'
 
-// ── Detect mobile ─────────────────────────────────────────────────────────────
-export const isMobile = () => window.innerWidth <= 768
+const isMobile = () => window.innerWidth <= 768
 
-// ── Screen Time Hook ──────────────────────────────────────────────────────────
 function useScreenTime() {
-  const startTime = useRef(Date.now())
+  const startTime = useRef(0)
   const [screenTime, setScreenTime] = useState(() => {
     const today = new Date().toDateString()
     const saved = localStorage.getItem('screenTime')
-    if (saved) { const p = JSON.parse(saved); if (p.date === today) return p.minutes }
+    if (saved) {
+      const p = JSON.parse(saved)
+      if (p.date === today) return p.minutes
+    }
     return 0
   })
+
   useEffect(() => {
+    startTime.current = Date.now()
     const iv = setInterval(() => {
       const mins = Math.round((Date.now() - startTime.current) / 60000)
       const today = new Date().toDateString()
       const saved = localStorage.getItem('screenTime')
       let base = 0
-      if (saved) { const p = JSON.parse(saved); if (p.date === today) base = p.baseMinutes || 0 }
+      if (saved) {
+        const p = JSON.parse(saved)
+        if (p.date === today) base = p.baseMinutes || 0
+      }
       const total = base + mins
       setScreenTime(total)
-      localStorage.setItem('screenTime', JSON.stringify({ date: today, minutes: total, baseMinutes: base }))
+      localStorage.setItem('screenTime', JSON.stringify({
+        date: today, minutes: total, baseMinutes: base
+      }))
     }, 60000)
+
     const onUnload = () => {
       const mins = Math.round((Date.now() - startTime.current) / 60000)
       const today = new Date().toDateString()
       const saved = localStorage.getItem('screenTime')
       let base = 0
-      if (saved) { const p = JSON.parse(saved); if (p.date === today) base = p.baseMinutes || 0 }
-      localStorage.setItem('screenTime', JSON.stringify({ date: today, minutes: base + mins, baseMinutes: base + mins }))
+      if (saved) {
+        const p = JSON.parse(saved)
+        if (p.date === today) base = p.baseMinutes || 0
+      }
+      localStorage.setItem('screenTime', JSON.stringify({
+        date: today, minutes: base + mins, baseMinutes: base + mins
+      }))
     }
+
     window.addEventListener('beforeunload', onUnload)
-    return () => { clearInterval(iv); window.removeEventListener('beforeunload', onUnload) }
+    return () => {
+      clearInterval(iv)
+      window.removeEventListener('beforeunload', onUnload)
+    }
   }, [])
-  const fmt = (m) => m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${m%60>0?m%60+'m':''}`
+
+  const fmt = (m) => m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60 > 0 ? m % 60 + 'm' : ''}`
   return { screenTime, formattedTime: fmt(screenTime) }
 }
 
-// ── Bottom Navigation Bar (Mobile) ────────────────────────────────────────────
+const NAV = [
+  { path: '/',         icon: '⚡', label: 'Home'     },
+  { path: '/goals',    icon: '🎯', label: 'Goals'    },
+  { path: '/learning', icon: '📚', label: 'Learning' },
+  { path: '/health',   icon: '💚', label: 'Health'   },
+  { path: '/profile',  icon: '👤', label: 'Profile'  },
+]
+
 function BottomNav() {
   const { T } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
-  const { logout } = useAuth()
-
-  const NAV = [
-    { path: '/',         icon: '⚡', label: 'Home'     },
-    { path: '/goals',    icon: '🎯', label: 'Goals'    },
-    { path: '/learning', icon: '📚', label: 'Learning' },
-    { path: '/health',   icon: '💚', label: 'Health'   },
-    { path: '/profile',  icon: '👤', label: 'Profile'  },
-  ]
 
   return (
     <nav style={{
@@ -69,10 +86,10 @@ function BottomNav() {
       background: T.bgCard,
       borderTop: `1px solid ${T.border}`,
       display: 'flex', alignItems: 'center',
-      padding: '8px 0 12px',
+      padding: '8px 0',
+      paddingBottom: 'calc(8px + env(safe-area-inset-bottom))',
       zIndex: 1000,
       boxShadow: '0 -4px 20px rgba(0,0,0,0.08)',
-      paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
     }}>
       {NAV.map(n => {
         const active = location.pathname === n.path
@@ -80,12 +97,11 @@ function BottomNav() {
           <div key={n.path} onClick={() => navigate(n.path)}
             style={{
               flex: 1, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', gap: 4, cursor: 'pointer',
-              padding: '4px 0',
+              alignItems: 'center', gap: 3, cursor: 'pointer', padding: '4px 0',
             }}>
             <div style={{
-              width: 42, height: 28, borderRadius: 14,
-              background: active ? `${T.accent}18` : 'transparent',
+              width: 40, height: 26, borderRadius: 13,
+              background: active ? `${T.accent}20` : 'transparent',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 18, transition: 'all 0.2s',
               transform: active ? 'scale(1.1)' : 'scale(1)',
@@ -93,9 +109,9 @@ function BottomNav() {
               {n.icon}
             </div>
             <span style={{
-              fontSize: 10, fontFamily: T.fontLabel, fontWeight: active ? 600 : 400,
+              fontSize: 10, fontFamily: T.fontLabel,
+              fontWeight: active ? 600 : 400,
               color: active ? T.accent : T.textMuted,
-              letterSpacing: '0.02em',
             }}>
               {n.label}
             </span>
@@ -106,24 +122,25 @@ function BottomNav() {
   )
 }
 
-// ── Desktop Sidebar ───────────────────────────────────────────────────────────
 function DesktopSidebar() {
   const [expanded, setExpanded] = useState(false)
-  const navigate   = useNavigate()
-  const location   = useLocation()
+  const navigate = useNavigate()
+  const location = useLocation()
   const { logout } = useAuth()
   const { T, isDark, toggleTheme } = useTheme()
 
-  const NAV = [
+  const SIDENAV = [
     { path: '/',         icon: '⚡', label: 'Dashboard'    },
-    { path: '/profile',  icon: '👤', label: 'Profile'      },
+    { path: '/goals',    icon: '🎯', label: 'Goals'        },
     { path: '/learning', icon: '📚', label: 'Learning Path' },
     { path: '/health',   icon: '💚', label: 'Health'       },
-    { path: '/goals',    icon: '🎯', label: 'Goals'        },
+    { path: '/profile',  icon: '👤', label: 'Profile'      },
   ]
 
   return (
-    <nav onMouseEnter={() => setExpanded(true)} onMouseLeave={() => setExpanded(false)}
+    <nav
+      onMouseEnter={() => setExpanded(true)}
+      onMouseLeave={() => setExpanded(false)}
       style={{
         width: expanded ? 220 : 68,
         background: T.bgSidebar,
@@ -133,22 +150,21 @@ function DesktopSidebar() {
         transition: 'width 0.3s cubic-bezier(0.4,0,0.2,1)',
         zIndex: 100, flexShrink: 0, overflowX: 'hidden',
         boxShadow: '4px 0 24px rgba(0,0,0,0.15)',
-      }}>
-      {/* Logo */}
+      }}
+    >
       <div style={{ padding: '24px 0 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 72 }}>
         {expanded ? (
           <div style={{ padding: '0 20px', width: '100%' }}>
             <div style={{ fontFamily: T.fontHeading, fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>StudyOS</div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: 3, fontFamily: T.fontLabel }}>Academic Platform</div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.15em', textTransform: 'uppercase', marginTop: 3 }}>Academic Platform</div>
           </div>
         ) : (
           <div style={{ fontFamily: T.fontHeading, fontSize: 22, fontWeight: 700, color: '#fff' }}>S</div>
         )}
       </div>
 
-      {/* Nav */}
       <div style={{ flex: 1, padding: '12px 0' }}>
-        {NAV.map(n => {
+        {SIDENAV.map(n => {
           const active = location.pathname === n.path
           return (
             <div key={n.path} onClick={() => navigate(n.path)}
@@ -169,7 +185,6 @@ function DesktopSidebar() {
         })}
       </div>
 
-      {/* Bottom */}
       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '12px 0' }}>
         <div onClick={toggleTheme}
           style={{ display: 'flex', alignItems: 'center', gap: 12, padding: expanded ? '11px 20px' : '11px 0', justifyContent: expanded ? 'flex-start' : 'center', cursor: 'pointer', color: 'rgba(255,255,255,0.45)' }}>
@@ -186,7 +201,6 @@ function DesktopSidebar() {
   )
 }
 
-// ── Loading Screen ────────────────────────────────────────────────────────────
 function LoadingScreen() {
   const { T } = useTheme()
   return (
@@ -194,14 +208,12 @@ function LoadingScreen() {
       <div style={{ fontFamily: T.fontHeading, fontWeight: 700, fontSize: 42, color: T.accent, letterSpacing: '-0.02em' }}>StudyOS</div>
       <div style={{ color: T.textMuted, fontSize: 14, fontFamily: T.fontBody }}>Loading workspace...</div>
       <div style={{ width: 160, height: 3, background: T.border, borderRadius: 99, overflow: 'hidden', marginTop: 8 }}>
-        <div style={{ height: '100%', width: '60%', background: T.accent, borderRadius: 99, animation: 'load 1.5s ease infinite' }} />
+        <div style={{ height: '100%', width: '60%', background: T.accent, borderRadius: 99 }} />
       </div>
-      <style>{`@keyframes load{0%{width:0%}50%{width:80%}100%{width:0%}}`}</style>
     </div>
   )
 }
 
-// ── App Shell ─────────────────────────────────────────────────────────────────
 function AppShell() {
   const { T } = useTheme()
   const { screenTime, formattedTime } = useScreenTime()
@@ -218,23 +230,16 @@ function AppShell() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: T.bg, color: T.textPrimary, fontFamily: T.fontBody, transition: 'background 0.3s, color 0.3s' }}>
-
-      {/* Screen time warning */}
       {pct >= 80 && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 2000, background: pct >= 100 ? T.accentRed : T.accentGold, color: '#fff', padding: '10px 20px', textAlign: 'center', fontSize: 13, fontFamily: T.fontBody, fontWeight: 500 }}>
           {pct >= 100 ? '⚠ Screen time limit reached — take a break' : `⚠ ${pct}% of daily screen time used`}
         </div>
       )}
-
-      {/* Desktop sidebar — hidden on mobile */}
       {!mobile && <DesktopSidebar />}
-
-      {/* Main content */}
       <main style={{
         flex: 1, overflowY: 'auto',
         paddingTop: pct >= 80 ? '42px' : '0',
         paddingBottom: mobile ? '80px' : '0',
-        maxWidth: mobile ? '100%' : 'none',
         width: mobile ? '100%' : 'auto',
       }}>
         <Routes>
@@ -245,10 +250,7 @@ function AppShell() {
           <Route path="/goals"    element={<Goals mobile={mobile} />} />
         </Routes>
       </main>
-
-      {/* Bottom nav — only on mobile */}
       {mobile && <BottomNav />}
-
       <GoalReminder />
     </div>
   )
