@@ -1,50 +1,28 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import { useTheme } from '../ThemeContext'
 import { db } from '../firebase/config'
 import {
   collection, addDoc, getDocs,
   deleteDoc, doc, updateDoc, serverTimestamp
 } from 'firebase/firestore'
-import { T } from '../theme'
 
-function PageHeader({ title, subtitle }) {
-  return (
-    <div style={{ marginBottom: 28, paddingBottom: 16, borderBottom: '3px double ' + T.border }}>
-      <div style={{ fontFamily: T.fontHeading, fontStyle: 'italic', fontSize: 36, fontWeight: 800, color: T.textPrimary, lineHeight: 1.1 }}>{title}</div>
-      {subtitle && <div style={{ color: T.textMuted, fontSize: 14, fontStyle: 'italic', marginTop: 6 }}>{subtitle}</div>}
-    </div>
-  )
-}
-
-const STATUS_COLORS = {
-  pending:    T.textMuted,
-  active:     '#8b4513',
-  completed:  '#4a7c59',
-}
-
-const STATUS_LABELS = {
-  pending:   'Not Started',
-  active:    'In Progress',
-  completed: 'Complete',
-}
-
-export default function LearningPath() {
+export default function LearningPath({ mobile = false }) {
   const { user } = useAuth()
+  const { T } = useTheme()
   const uid = user?.uid
 
-  const [modules,   setModules]   = useState([])
-  const [loading,   setLoading]   = useState(true)
-  const [saving,    setSaving]    = useState(false)
-  const [showForm,  setShowForm]  = useState(false)
-  const [form,      setForm]      = useState({ name: '', subject: '', description: '' })
+  const [modules,  setModules]  = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [saving,   setSaving]   = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [form,     setForm]     = useState({ name: '', subject: '', description: '' })
 
-  // Load modules from Firestore
   useEffect(() => {
     if (!uid) return
     const load = async () => {
       const snap = await getDocs(collection(db, 'users', uid, 'learning'))
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      // Sort by order field, then createdAt
       data.sort((a, b) => (a.order || 0) - (b.order || 0))
       setModules(data)
       setLoading(false)
@@ -97,180 +75,206 @@ export default function LearningPath() {
   const doneCt   = modules.filter(m => m.status === 'completed').length
   const activeCt = modules.filter(m => m.status === 'active').length
 
+  const STATUS_COLOR = {
+    pending:   T.textMuted,
+    active:    T.accent,
+    completed: T.accentGreen,
+  }
+
+  const STATUS_LABEL = {
+    pending:   'Not Started',
+    active:    'In Progress',
+    completed: 'Complete',
+  }
+
   if (loading) return (
-    <div style={{ padding: 32, fontFamily: T.fontBody, color: T.textMuted, fontStyle: 'italic' }}>
+    <div style={{ padding: 32, fontFamily: T.fontBody, color: T.textMuted, background: T.bg, minHeight: '100vh' }}>
       Loading your curriculum...
     </div>
   )
 
   return (
-    <div style={{ padding: 32, minHeight: '100vh', background: T.bg, backgroundImage: 'repeating-linear-gradient(transparent, transparent 31px, rgba(139,101,43,0.05) 31px, rgba(139,101,43,0.05) 32px)', fontFamily: T.fontBody }}>
+    <div style={{ background: T.bg, minHeight: '100vh', fontFamily: T.fontBody, transition: 'background 0.3s' }}>
 
       {saving && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, background: T.accentGreen, color: '#fff', padding: '8px 18px', borderRadius: 4, fontSize: 14, fontStyle: 'italic', zIndex: 999 }}>
-          ✓ Saved to records
+        <div style={{ position: 'fixed', bottom: mobile ? 90 : 24, right: 16, background: T.accentGreen, color: '#fff', padding: '8px 18px', borderRadius: mobile ? 20 : 4, fontSize: 13, fontWeight: 500, zIndex: 999 }}>
+          ✓ Saved
         </div>
       )}
 
-      <PageHeader title="Learning Path" subtitle="Build your personal curriculum — add, start and complete your modules" />
-
-      {/* Stats row */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 28 }}>
-        {[
-          { l: 'Total Modules',  v: modules.length, c: T.accentBlue  },
-          { l: 'In Progress',    v: activeCt,        c: T.accent      },
-          { l: 'Completed',      v: doneCt,          c: T.accentGreen },
-          { l: 'Remaining',      v: modules.length - doneCt - activeCt, c: T.textMuted },
-        ].map(s => (
-          <div key={s.l} style={{ background: T.bgCard, border: '1px solid ' + T.border, borderTop: '3px solid ' + T.accentGold, borderRadius: 4, padding: '14px 20px', flex: 1 }}>
-            <div style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: T.textMuted, marginBottom: 6, fontFamily: T.fontLabel }}>{s.l}</div>
-            <div style={{ fontFamily: T.fontHeading, fontStyle: 'italic', fontSize: 28, fontWeight: 800, color: s.c }}>{s.v}</div>
+      {/* Header */}
+      <div style={{ background: mobile ? T.bgSidebar : T.bg, padding: mobile ? '52px 20px 24px' : '32px 36px 0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontFamily: T.fontHeading, fontSize: mobile ? 28 : 36, fontWeight: 700, color: mobile ? '#fff' : T.textPrimary, letterSpacing: '-0.02em' }}>
+              Learning Path
+            </div>
+            <div style={{ fontSize: 13, color: mobile ? 'rgba(255,255,255,0.5)' : T.textMuted, marginTop: 4 }}>
+              {modules.length} modules · {doneCt} completed · {activeCt} in progress
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* Add Module Button */}
-      <div style={{ marginBottom: 20 }}>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          style={{ padding: '10px 22px', background: showForm ? T.bgHover : T.accent, border: '1px solid ' + T.border, borderRadius: 4, color: showForm ? T.textPrimary : '#fff', fontFamily: T.fontHeading, fontStyle: 'italic', fontSize: 15, fontWeight: 600, cursor: 'pointer' }}
-        >
-          {showForm ? '✕ Cancel' : '+ Add New Module'}
-        </button>
-      </div>
-
-      {/* Add Module Form */}
-      {showForm && (
-        <div style={{ background: T.bgCard, border: '1px solid ' + T.border, borderLeft: '4px solid ' + T.accent, borderRadius: 4, padding: 24, marginBottom: 24, maxWidth: 560 }}>
-          <div style={{ fontFamily: T.fontHeading, fontStyle: 'italic', fontSize: 18, fontWeight: 700, color: T.accent, marginBottom: 18 }}>
-            ✒ New Module Entry
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: T.fontLabel, marginBottom: 5 }}>Module Name *</div>
-            <input
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="e.g. Data Structures & Algorithms"
-              style={{ width: '100%', background: T.bgInput, border: '1px solid ' + T.border, borderBottom: '2px solid ' + T.borderStrong, borderRadius: 4, padding: '10px 14px', color: T.textPrimary, fontSize: 15, fontFamily: T.fontBody, outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: T.fontLabel, marginBottom: 5 }}>Subject / Language</div>
-            <input
-              value={form.subject}
-              onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
-              placeholder="e.g. Python, Mathematics, History"
-              style={{ width: '100%', background: T.bgInput, border: '1px solid ' + T.border, borderBottom: '2px solid ' + T.borderStrong, borderRadius: 4, padding: '10px 14px', color: T.textPrimary, fontSize: 15, fontFamily: T.fontBody, outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: T.fontLabel, marginBottom: 5 }}>Description (optional)</div>
-            <textarea
-              value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="What will you learn in this module?"
-              rows={3}
-              style={{ width: '100%', background: T.bgInput, border: '1px solid ' + T.border, borderBottom: '2px solid ' + T.borderStrong, borderRadius: 4, padding: '10px 14px', color: T.textPrimary, fontSize: 14, fontFamily: T.fontBody, fontStyle: 'italic', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
-            />
-          </div>
-
           <button
-            onClick={addModule}
-            disabled={!form.name.trim() || saving}
-            style={{ padding: '11px 24px', background: T.accent, border: 'none', borderRadius: 4, color: '#fff', fontFamily: T.fontHeading, fontStyle: 'italic', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: !form.name.trim() ? 0.5 : 1 }}
-          >
-            {saving ? 'Saving...' : 'Add to Curriculum'}
+            onClick={() => setShowForm(!showForm)}
+            style={{ background: mobile ? 'rgba(255,255,255,0.15)' : T.accent, border: 'none', borderRadius: 12, padding: mobile ? '10px 16px' : '11px 20px', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: T.fontBody }}>
+            {showForm ? '✕ Cancel' : '+ Add Module'}
           </button>
         </div>
-      )}
+      </div>
 
-      {/* Module List */}
-      {modules.length === 0 ? (
-        <div style={{ background: T.bgCard, border: '1px solid ' + T.border, borderRadius: 4, padding: 40, textAlign: 'center', color: T.textMuted, fontStyle: 'italic', maxWidth: 560 }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>📜</div>
-          <div style={{ fontFamily: T.fontHeading, fontSize: 18, marginBottom: 6 }}>Your curriculum is empty</div>
-          <div style={{ fontSize: 14 }}>Click "Add New Module" above to begin building your learning path</div>
-        </div>
-      ) : (
-        <div style={{ maxWidth: 620 }}>
-          {modules.map((m, i) => (
-            <div key={m.id} style={{
-              background: m.status === 'active' ? T.bgCard : m.status === 'completed' ? 'rgba(74,124,89,0.04)' : T.bg,
-              border: '1px solid ' + T.border,
-              borderLeft: '4px solid ' + (m.status === 'completed' ? T.accentGreen : m.status === 'active' ? T.accent : T.border),
-              borderRadius: 4, padding: '18px 20px', marginBottom: 10,
-              boxShadow: m.status === 'active' ? '0 2px 12px rgba(139,69,19,0.1)' : 'none',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+      <div style={{ padding: mobile ? '16px' : '24px 36px' }}>
 
-                {/* Number badge */}
-                <div style={{
-                  width: 34, height: 34, borderRadius: 4, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: T.fontHeading, fontStyle: 'italic', fontSize: 16, fontWeight: 700,
-                  background: m.status === 'completed' ? T.accentGreen : m.status === 'active' ? T.accent : T.bgHover,
-                  color: m.status === 'pending' ? T.textMuted : '#fff',
-                }}>
-                  {m.status === 'completed' ? '✓' : i + 1}
-                </div>
-
-                {/* Content */}
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ fontFamily: T.fontBody, fontSize: 16, fontWeight: 600, color: m.status === 'completed' ? T.textMuted : T.textPrimary, textDecoration: m.status === 'completed' ? 'line-through' : 'none' }}>
-                      {m.name}
-                    </div>
-                    {m.subject && (
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 2, background: T.bgHover, color: T.textSecondary, border: '1px solid ' + T.border, fontFamily: T.fontLabel, letterSpacing: '0.05em' }}>
-                        {m.subject}
-                      </span>
-                    )}
-                    <span style={{ fontSize: 11, fontFamily: T.fontLabel, letterSpacing: '0.05em', color: STATUS_COLORS[m.status], fontStyle: 'italic' }}>
-                      — {STATUS_LABELS[m.status]}
-                    </span>
-                  </div>
-
-                  {m.description && (
-                    <div style={{ fontSize: 13, color: T.textMuted, fontStyle: 'italic', marginTop: 5 }}>
-                      {m.description}
-                    </div>
-                  )}
-
-                  {/* Action buttons */}
-                  <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                    {m.status === 'pending' && (
-                      <button onClick={() => changeStatus(m.id, 'active')} style={{ padding: '5px 14px', background: T.accent, border: 'none', borderRadius: 4, color: '#fff', fontSize: 13, fontFamily: T.fontBody, fontStyle: 'italic', cursor: 'pointer' }}>
-                        ▶ Start Module
-                      </button>
-                    )}
-                    {m.status === 'active' && (
-                      <>
-                        <button onClick={() => changeStatus(m.id, 'completed')} style={{ padding: '5px 14px', background: T.accentGreen, border: 'none', borderRadius: 4, color: '#fff', fontSize: 13, fontFamily: T.fontBody, fontStyle: 'italic', cursor: 'pointer' }}>
-                          ✓ Mark Complete
-                        </button>
-                        <button onClick={() => changeStatus(m.id, 'pending')} style={{ padding: '5px 14px', background: T.bgHover, border: '1px solid ' + T.border, borderRadius: 4, color: T.textSecondary, fontSize: 13, fontFamily: T.fontBody, fontStyle: 'italic', cursor: 'pointer' }}>
-                          ↩ Pause
-                        </button>
-                      </>
-                    )}
-                    {m.status === 'completed' && (
-                      <button onClick={() => changeStatus(m.id, 'active')} style={{ padding: '5px 14px', background: T.bgHover, border: '1px solid ' + T.border, borderRadius: 4, color: T.textSecondary, fontSize: 13, fontFamily: T.fontBody, fontStyle: 'italic', cursor: 'pointer' }}>
-                        ↩ Reopen
-                      </button>
-                    )}
-                    <button onClick={() => deleteModule(m.id)} style={{ padding: '5px 14px', background: 'rgba(139,32,32,0.08)', border: '1px solid rgba(139,32,32,0.2)', borderRadius: 4, color: T.accentRed, fontSize: 13, fontFamily: T.fontBody, fontStyle: 'italic', cursor: 'pointer' }}>
-                      ✕ Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
+        {/* Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
+          {[
+            { l: 'Total',       v: modules.length,                    c: T.accentBlue  },
+            { l: 'In Progress', v: activeCt,                          c: T.accent      },
+            { l: 'Completed',   v: doneCt,                            c: T.accentGreen },
+            { l: 'Remaining',   v: modules.length - doneCt - activeCt, c: T.textMuted  },
+          ].map(s => (
+            <div key={s.l} style={{ background: T.bgCard, border: '1px solid ' + T.borderCard, borderRadius: 14, padding: mobile ? '12px' : '16px', textAlign: 'center', boxShadow: T.shadowCard }}>
+              <div style={{ fontFamily: T.fontHeading, fontSize: mobile ? 24 : 28, fontWeight: 700, color: s.c, lineHeight: 1 }}>{s.v}</div>
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: T.fontLabel }}>{s.l}</div>
             </div>
           ))}
         </div>
-      )}
+
+        {/* Add Module Form */}
+        {showForm && (
+          <div style={{ background: T.bgCard, border: '1px solid ' + T.border, borderLeft: '4px solid ' + T.accent, borderRadius: 16, padding: 20, marginBottom: 20, boxShadow: T.shadowCard }}>
+            <div style={{ fontFamily: T.fontHeading, fontSize: 18, fontWeight: 700, color: T.accent, marginBottom: 16 }}>
+              New Module
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: T.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: T.fontLabel, marginBottom: 5 }}>Module Name *</div>
+              <input
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="e.g. Data Structures & Algorithms"
+                style={{ width: '100%', background: T.bgInput, border: '1px solid ' + T.border, borderRadius: 10, padding: '11px 14px', color: T.textPrimary, fontSize: 14, fontFamily: T.fontBody, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: T.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: T.fontLabel, marginBottom: 5 }}>Subject / Language</div>
+              <input
+                value={form.subject}
+                onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
+                placeholder="e.g. Python, Mathematics"
+                style={{ width: '100%', background: T.bgInput, border: '1px solid ' + T.border, borderRadius: 10, padding: '11px 14px', color: T.textPrimary, fontSize: 14, fontFamily: T.fontBody, outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: T.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: T.fontLabel, marginBottom: 5 }}>Description (optional)</div>
+              <textarea
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="What will you learn in this module?"
+                rows={3}
+                style={{ width: '100%', background: T.bgInput, border: '1px solid ' + T.border, borderRadius: 10, padding: '11px 14px', color: T.textPrimary, fontSize: 14, fontFamily: T.fontBody, outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+              />
+            </div>
+
+            <button
+              onClick={addModule}
+              disabled={!form.name.trim() || saving}
+              style={{ padding: '11px 24px', background: T.accent, border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: T.fontBody, opacity: !form.name.trim() ? 0.5 : 1 }}>
+              {saving ? 'Saving...' : 'Add to Curriculum'}
+            </button>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {modules.length === 0 ? (
+          <div style={{ background: T.bgCard, border: '1px solid ' + T.borderCard, borderRadius: 16, padding: 40, textAlign: 'center', boxShadow: T.shadowCard }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>📚</div>
+            <div style={{ fontFamily: T.fontHeading, fontSize: 20, color: T.textPrimary, marginBottom: 6 }}>No modules yet</div>
+            <div style={{ fontSize: 14, color: T.textMuted }}>Click "Add Module" to build your curriculum</div>
+          </div>
+        ) : (
+          <div>
+            {modules.map((m, i) => (
+              <div key={m.id} style={{
+                background: m.status === 'active' ? T.bgCard : m.status === 'completed' ? T.bgCard : T.bg,
+                border: '1px solid ' + T.borderCard,
+                borderLeft: '4px solid ' + STATUS_COLOR[m.status],
+                borderRadius: 14, padding: mobile ? '16px' : '18px 20px',
+                marginBottom: 10, boxShadow: T.shadowCard,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+
+                  {/* Badge */}
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: T.fontHeading, fontSize: 15, fontWeight: 700,
+                    background: m.status === 'completed' ? T.accentGreen : m.status === 'active' ? T.accent : T.bgInput,
+                    color: m.status === 'pending' ? T.textMuted : '#fff',
+                  }}>
+                    {m.status === 'completed' ? '✓' : i + 1}
+                  </div>
+
+                  {/* Content */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                      <div style={{ fontSize: mobile ? 15 : 15, fontWeight: 600, color: m.status === 'completed' ? T.textMuted : T.textPrimary, textDecoration: m.status === 'completed' ? 'line-through' : 'none', fontFamily: T.fontBody }}>
+                        {m.name}
+                      </div>
+                      {m.subject && (
+                        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 6, background: T.bgInput, color: T.textSecondary, border: '1px solid ' + T.border, fontFamily: T.fontLabel }}>
+                          {m.subject}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, color: STATUS_COLOR[m.status], fontFamily: T.fontLabel }}>
+                        {STATUS_LABEL[m.status]}
+                      </span>
+                    </div>
+
+                    {m.description && (
+                      <div style={{ fontSize: 13, color: T.textMuted, marginBottom: 10 }}>
+                        {m.description}
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {m.status === 'pending' && (
+                        <button onClick={() => changeStatus(m.id, 'active')}
+                          style={{ padding: '6px 14px', background: T.accent, border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontFamily: T.fontBody, cursor: 'pointer' }}>
+                          ▶ Start
+                        </button>
+                      )}
+                      {m.status === 'active' && (
+                        <>
+                          <button onClick={() => changeStatus(m.id, 'completed')}
+                            style={{ padding: '6px 14px', background: T.accentGreen, border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontFamily: T.fontBody, cursor: 'pointer' }}>
+                            ✓ Complete
+                          </button>
+                          <button onClick={() => changeStatus(m.id, 'pending')}
+                            style={{ padding: '6px 14px', background: T.bgInput, border: '1px solid ' + T.border, borderRadius: 8, color: T.textSecondary, fontSize: 13, fontFamily: T.fontBody, cursor: 'pointer' }}>
+                            ↩ Pause
+                          </button>
+                        </>
+                      )}
+                      {m.status === 'completed' && (
+                        <button onClick={() => changeStatus(m.id, 'active')}
+                          style={{ padding: '6px 14px', background: T.bgInput, border: '1px solid ' + T.border, borderRadius: 8, color: T.textSecondary, fontSize: 13, fontFamily: T.fontBody, cursor: 'pointer' }}>
+                          ↩ Reopen
+                        </button>
+                      )}
+                      <button onClick={() => deleteModule(m.id)}
+                        style={{ padding: '6px 14px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, color: T.accentRed, fontSize: 13, fontFamily: T.fontBody, cursor: 'pointer' }}>
+                        ✕ Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,12 +1,14 @@
 import { useUserData } from '../hooks/useUserData'
 import { useAuth } from '../hooks/useAuth'
 import { useState } from 'react'
+import { useTheme } from '../ThemeContext'
 
 export default function Profile() {
   const { profile, updateProfile, saving } = useUserData()
   const { user } = useAuth()
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState(profile)
+  const { T } = useTheme()
 
   const save = async () => { await updateProfile(draft); setEditing(false) }
 

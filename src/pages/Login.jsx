@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../hooks/useAuth'
 
+
 export default function LoginPage() {
   const { login, signup, loginWithGoogle, resetPassword, error, clearError } = useAuth()
   const [mode, setMode] = useState('login')
