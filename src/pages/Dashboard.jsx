@@ -1,195 +1,115 @@
+/* eslint-disable */
+import { useState, useEffect } from 'react'
 import { useUserData } from '../hooks/useUserData'
 import { useTheme } from '../ThemeContext'
-import { useAuth } from '../hooks/useAuth'
 
-export default function Dashboard({ screenTime = 0, formattedScreenTime = '0m', screenTimeLimit = 360, mobile = false }) {
-  const { profile, goals, health, progress, saving } = useUserData()
-  const { T, isDark, toggleTheme } = useTheme()
-  const { logout } = useAuth()
-  const doneCt = goals.filter(g => g.done).length
-  const pct    = (v, max) => Math.min(100, Math.round((v / max) * 100))
-  const hour   = new Date().getHours()
-  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening'
+export function GoalReminder() {
+  const { goals } = useUserData()
+  const { T } = useTheme()
+  const [dismissed, setDismissed] = useState(false)
+  const [show, setShow] = useState(false)
 
-  // ── MOBILE LAYOUT ──────────────────────────────────────────────────────────
-  if (mobile) return (
-    <div style={{ background: T.bg, minHeight: '100vh', fontFamily: T.fontBody }}>
+  useEffect(() => {
+    const today = new Date().toDateString()
+    const lastDismissed = localStorage.getItem('goalReminderDismissed')
+    if (lastDismissed === today) {
+      setShow(false)
+      return
+    }
+    const timer = setTimeout(() => {
+      const todayStr = new Date().toDateString()
+      const hasGoalsToday = goals.some(g => {
+        if (!g.createdAt) return false
+        const date = g.createdAt?.toDate ? g.createdAt.toDate() : new Date(g.createdAt)
+        return date.toDateString() === todayStr
+      })
+      if (!hasGoalsToday) {
+        setShow(true)
+      }
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [goals])
 
-      {saving && <div style={{ position: 'fixed', bottom: 90, right: 16, background: T.accentGreen, color: '#fff', padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 500, zIndex: 999 }}>✓ Saved</div>}
+  const dismiss = () => {
+    const today = new Date().toDateString()
+    localStorage.setItem('goalReminderDismissed', today)
+    setShow(false)
+    setDismissed(true)
+  }
 
-      {/* Mobile Header */}
-      <div style={{ background: T.bgSidebar, padding: '52px 20px 28px', position: 'relative', overflow: 'hidden' }}>
-        {/* Decorative circle */}
-        <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: -40, left: -40, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none' }} />
+  if (!show || dismissed) return null
 
-        {/* Top bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, position: 'relative' }}>
-          <div style={{ fontFamily: T.fontHeading, fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>StudyOS</div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={toggleTheme} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 20, padding: '6px 12px', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: T.fontBody }}>
-              {isDark ? '☀' : '☽'}
-            </button>
-            <button onClick={logout} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 20, padding: '6px 12px', color: '#fff', fontSize: 13, cursor: 'pointer', fontFamily: T.fontBody }}>
-              Exit
-            </button>
-          </div>
-        </div>
+  const hour = new Date().getHours()
+  const pct  = hour < 12 ? 20 : hour < 17 ? 55 : 85
+  const msg  = hour < 12
+    ? 'Good morning — start the day with clear goals'
+    : hour < 17
+    ? 'Good afternoon — still time to plan your tasks'
+    : 'Good evening — set goals for tomorrow'
 
-        {/* Greeting */}
-        <div style={{ position: 'relative' }}>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 4, fontFamily: T.fontLabel, letterSpacing: '0.05em' }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </div>
-          <div style={{ fontFamily: T.fontHeading, fontSize: 28, fontWeight: 700, color: '#fff', lineHeight: 1.1, letterSpacing: '-0.01em' }}>
-            {greeting},<br />{profile?.name?.split(' ')[0] || 'Scholar'} 👋
-          </div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>
-            {profile?.major || 'Student'} · GPA {profile?.gpa || '—'} · 🔥 {progress?.streak || 0} days
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Stats — horizontal scroll */}
-      <div style={{ padding: '20px 0 0' }}>
-        <div style={{ paddingLeft: 20, marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.textMuted, fontFamily: T.fontLabel }}>Overview</div>
-        </div>
-        <div style={{ display: 'flex', gap: 12, padding: '4px 20px 4px', overflowX: 'auto', scrollbarWidth: 'none' }}>
-          {[
-            { label: 'Study',    value: `${progress?.study||0}h`,    goal: `/${progress?.studyGoal||5}h`, color: T.accent,      p: pct(progress?.study||0, progress?.studyGoal||5) },
-            { label: 'Academic', value: `${progress?.academic||0}%`, goal: 'score',                       color: T.accentGreen,  p: progress?.academic||0 },
-            { label: 'Goals',    value: `${doneCt}`,                  goal: `/${goals.length} done`,       color: T.accentGold,   p: pct(doneCt, goals.length||1) },
-            { label: 'Screen',   value: formattedScreenTime,          goal: `/${screenTimeLimit/60}h`,     color: T.accentTeal,   p: pct(screenTime, screenTimeLimit) },
-          ].map(s => (
-            <div key={s.label} style={{ background: T.bgCard, border: `1px solid ${T.borderCard}`, borderRadius: 16, padding: '16px 18px', minWidth: 130, flexShrink: 0, boxShadow: T.shadowCard }}>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textMuted, fontFamily: T.fontLabel, marginBottom: 8 }}>{s.label}</div>
-              <div style={{ fontFamily: T.fontHeading, fontSize: 28, fontWeight: 700, color: s.color, lineHeight: 1, letterSpacing: '-0.01em' }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{s.goal}</div>
-              <div style={{ height: 3, background: T.bgInput, borderRadius: 99, overflow: 'hidden', marginTop: 10 }}>
-                <div style={{ height: '100%', width: `${s.p}%`, background: s.color, borderRadius: 99 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Goals Preview */}
-      <div style={{ margin: '20px 20px 0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.textMuted, fontFamily: T.fontLabel }}>Today's Goals</div>
-          <div style={{ fontSize: 13, color: T.accent, fontFamily: T.fontBody, fontWeight: 600 }}>{doneCt}/{goals.length} done</div>
-        </div>
-        <div style={{ background: T.bgCard, border: `1px solid ${T.borderCard}`, borderRadius: 16, overflow: 'hidden', boxShadow: T.shadowCard }}>
-          {goals.length === 0 ? (
-            <div style={{ padding: '20px', textAlign: 'center', color: T.textMuted, fontSize: 14, fontStyle: 'italic' }}>No goals yet — tap Goals below to add some</div>
-          ) : (
-            goals.slice(0, 4).map((g, i) => (
-              <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: i < Math.min(goals.length,4)-1 ? `1px solid ${T.border}` : 'none' }}>
-                <div style={{ width: 20, height: 20, borderRadius: '50%', border: `2px solid ${g.done ? T.accentGreen : T.border}`, background: g.done ? T.accentGreen : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#fff', flexShrink: 0 }}>
-                  {g.done ? '✓' : ''}
-                </div>
-                <div style={{ fontSize: 14, color: g.done ? T.textMuted : T.textPrimary, textDecoration: g.done ? 'line-through' : 'none', flex: 1 }}>{g.text}</div>
-              </div>
-            ))
-          )}
-          {goals.length > 4 && (
-            <div style={{ padding: '12px 16px', textAlign: 'center', fontSize: 13, color: T.accent, borderTop: `1px solid ${T.border}` }}>+{goals.length - 4} more goals</div>
-          )}
-        </div>
-      </div>
-
-      {/* Health snapshot */}
-      <div style={{ margin: '20px 20px 0' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.textMuted, fontFamily: T.fontLabel, marginBottom: 12 }}>Health Today</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-          {[
-            { icon: '🚶', val: health?.steps||0,        lbl: 'Steps',   color: T.accentGreen },
-            { icon: '💧', val: `${health?.water||0}L`,  lbl: 'Water',   color: T.accentTeal  },
-            { icon: '😴', val: `${health?.sleep||0}h`,  lbl: 'Sleep',   color: T.accent      },
-            { icon: '🧘', val: `${health?.mindful||0}m`,lbl: 'Mindful', color: T.accentGold  },
-            { icon: '🍎', val: health?.calories||0,     lbl: 'Calories',color: T.accentRed   },
-            { icon: '❤️', val: `${health?.bpm||0}`,     lbl: 'BPM',     color: T.accentRed   },
-          ].map(h => (
-            <div key={h.lbl} style={{ background: T.bgCard, border: `1px solid ${T.borderCard}`, borderRadius: 14, padding: '14px 10px', textAlign: 'center', boxShadow: T.shadowCard }}>
-              <div style={{ fontSize: 20, marginBottom: 6 }}>{h.icon}</div>
-              <div style={{ fontFamily: T.fontHeading, fontSize: 18, fontWeight: 700, color: h.color, lineHeight: 1 }}>{h.val}</div>
-              <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.fontLabel }}>{h.lbl}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Bottom padding for nav bar */}
-      <div style={{ height: 20 }} />
-    </div>
-  )
-
-  // ── DESKTOP LAYOUT ─────────────────────────────────────────────────────────
   return (
-    <div style={{ padding: '32px 36px', minHeight: '100vh', background: T.bg, transition: 'background 0.3s' }}>
-      {saving && <div style={{ position: 'fixed', bottom: 24, right: 24, background: T.accentGreen, color: '#fff', padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 500, zIndex: 999 }}>✓ Changes saved</div>}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
-        <div>
-          <div style={{ fontSize: 12, color: T.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: T.fontLabel, fontWeight: 600, marginBottom: 8 }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </div>
-          <div style={{ fontFamily: T.fontHeading, fontSize: 36, fontWeight: 700, color: T.textPrimary, letterSpacing: '-0.02em' }}>
-            {greeting}, {profile?.name?.split(' ')[0] || 'Scholar'}
-          </div>
-          <div style={{ fontSize: 14, color: T.textMuted, marginTop: 8 }}>{profile?.major} · {profile?.year} · GPA {profile?.gpa || '—'}</div>
+    <div style={{
+      position: 'fixed',
+      bottom: 88,
+      right: 16,
+      zIndex: 1000,
+      width: 300,
+      background: T.bgCard,
+      border: '1px solid ' + T.border,
+      borderLeft: '4px solid ' + T.accent,
+      borderRadius: 16,
+      boxShadow: T.shadowCard,
+      fontFamily: T.fontBody,
+      overflow: 'hidden',
+      animation: 'slideIn 0.4s ease',
+    }}>
+      {/* Top bar */}
+      <div style={{ background: T.accent, padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ fontFamily: T.fontHeading, fontSize: 15, fontWeight: 700, color: '#fff' }}>
+          Daily Reminder
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ background: T.bgCard, border: `1px solid ${T.borderCard}`, borderRadius: 10, padding: '10px 16px', fontSize: 13, color: T.textSecondary, boxShadow: T.shadowCard }}>🔥 {progress?.streak||0} day streak</div>
+        <button onClick={dismiss} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: 16, padding: 0 }}>
+          ✕
+        </button>
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: '14px 16px 16px' }}>
+        <div style={{ fontSize: 14, color: T.textPrimary, marginBottom: 8, lineHeight: 1.5 }}>
+          You have not set any goals for today yet.
+        </div>
+        <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 14, lineHeight: 1.5 }}>
+          {msg}
+        </div>
+
+        {/* Time of day bar */}
+        <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 5 }}>{msg}</div>
+        <div style={{ height: 4, background: T.bgInput, borderRadius: 99, overflow: 'hidden', marginBottom: 4 }}>
+          <div style={{ height: '100%', width: pct + '%', background: T.accentGold, borderRadius: 99, transition: 'width 1s ease' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: T.textMuted, marginBottom: 14, fontFamily: T.fontLabel, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <span>Morning</span>
+          <span>Afternoon</span>
+          <span>Evening</span>
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <a href="/goals" style={{ flex: 1, padding: '9px 0', background: T.accent, border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'center', textDecoration: 'none', display: 'block', fontFamily: T.fontBody }}>
+            Set Goals →
+          </a>
+          <button onClick={dismiss} style={{ padding: '9px 14px', background: T.bgInput, border: '1px solid ' + T.border, borderRadius: 10, color: T.textMuted, fontSize: 13, cursor: 'pointer', fontFamily: T.fontBody }}>
+            Later
+          </button>
         </div>
       </div>
 
-      <div style={{ height: 1, background: T.border, marginBottom: 32 }} />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 20, marginBottom: 32 }}>
-        {[
-          { label: 'Study Time',      value: `${progress?.study||0}h`,    sub: `Goal: ${progress?.studyGoal||5}h`,  p: pct(progress?.study||0, progress?.studyGoal||5), color: T.accent,      icon: '📚' },
-          { label: 'Academic Score',  value: `${progress?.academic||0}%`, sub: 'Semester average',                   p: progress?.academic||0,                           color: T.accentGreen,  icon: '🎓' },
-          { label: 'Goals Done',      value: `${doneCt}/${goals.length}`, sub: `${goals.length-doneCt} remaining`,  p: pct(doneCt,goals.length||1),                     color: T.accentGold,   icon: '✓'  },
-          { label: 'Screen Time',     value: formattedScreenTime,         sub: `Limit: ${screenTimeLimit/60}h`,      p: pct(screenTime,screenTimeLimit),                 color: T.accentTeal,   icon: '🖥' },
-        ].map(s => (
-          <div key={s.label} style={{ background: T.bgCard, border: `1px solid ${T.borderCard}`, borderRadius: 16, padding: '22px 24px', boxShadow: T.shadowCard }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: T.textMuted, fontFamily: T.fontLabel }}>{s.label}</div>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: `${s.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{s.icon}</div>
-            </div>
-            <div style={{ fontFamily: T.fontHeading, fontSize: 36, fontWeight: 700, color: T.textPrimary, lineHeight: 1, marginBottom: 6, letterSpacing: '-0.02em' }}>{s.value}</div>
-            <div style={{ fontSize: 13, color: T.textMuted, marginBottom: 14 }}>{s.sub}</div>
-            <div style={{ height: 4, background: T.bgInput, borderRadius: 99, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${s.p}%`, background: s.color, borderRadius: 99, transition: 'width 1s ease' }} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ background: T.bgCard, border: `1px solid ${T.borderCard}`, borderRadius: 16, padding: '24px 28px', boxShadow: T.shadowCard }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div style={{ fontFamily: T.fontHeading, fontSize: 20, fontWeight: 700, color: T.textPrimary }}>Health Overview</div>
-          <div style={{ fontSize: 12, color: T.textMuted, fontFamily: T.fontLabel, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Today</div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 12 }}>
-          {[
-            { icon:'🚶',val:health?.steps||0,        lbl:'Steps',   color:T.accentGreen },
-            { icon:'💧',val:`${health?.water||0}L`,  lbl:'Water',   color:T.accentTeal  },
-            { icon:'😴',val:`${health?.sleep||0}h`,  lbl:'Sleep',   color:T.accent      },
-            { icon:'🧘',val:`${health?.mindful||0}m`,lbl:'Mindful', color:T.accentGold  },
-            { icon:'🍎',val:health?.calories||0,     lbl:'Calories',color:T.accentRed   },
-            { icon:'❤',val:`${health?.bpm||0}`,      lbl:'BPM',     color:T.accentRed   },
-          ].map(h => (
-            <div key={h.lbl} style={{ background: T.bgInput, border: `1px solid ${T.border}`, borderRadius: 12, padding: '14px 10px', textAlign: 'center' }}>
-              <div style={{ fontSize: 22, marginBottom: 6 }}>{h.icon}</div>
-              <div style={{ fontFamily: T.fontHeading, fontSize: 18, fontWeight: 700, color: h.color }}>{h.val}</div>
-              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: T.fontLabel }}>{h.lbl}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <style>{`
+        @keyframes slideIn {
+          from { transform: translateX(120%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }
