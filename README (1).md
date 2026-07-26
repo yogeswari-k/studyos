@@ -30,9 +30,9 @@ Add your screenshots to a `screenshots/` folder in the repo root, then reference
 Suggested shots: Login, Dashboard, Goals, Health, Learning Path, Profile (light + dark mode).
 -->
 
-| Dashboard | Goals | Health |
-|---|---|---|
-| ![Dashboard](screenshots/dashboard.png) | ![Goals](screenshots/goals.png) | ![Health](screenshots/health.png) |
+| Dashboard | Goals | Health | Profile
+|---|---|---|---|
+| ![Dashboard](screenshots/scholar_dashboard.png) | ![Goals](screenshots/Scholar_Goals.png) | ![Health](screenshots/Scholar_Health.png) |![Profile](screenshots/Scholar_Profile.png)|
 
 ## ✨ Features
 
@@ -94,20 +94,7 @@ cd studyos
 npm install
 ```
 
-### Environment Setup
 
-Create a `.env` file in the project root with your own Firebase credentials:
-
-```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-```
-
-> Then update `src/firebase/config.js` to read these from `import.meta.env.VITE_FIREBASE_API_KEY` etc., instead of hardcoded values.
 
 ### Run Locally
 
