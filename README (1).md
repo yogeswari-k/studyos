@@ -30,9 +30,9 @@ Add your screenshots to a `screenshots/` folder in the repo root, then reference
 Suggested shots: Login, Dashboard, Goals, Health, Learning Path, Profile (light + dark mode).
 -->
 
-| Dashboard | Goals | Health | Profile
-|---|---|---|---|
-| ![Dashboard](screenshots/scholar_dashboard.png) | ![Goals](screenshots/Scholar_Goals.png) | ![Health](screenshots/Scholar_Health.png) |![Profile](screenshots/Scholar_Profile.png)|
+| Dashboard | Goals | Health | Profile| Learningpath|
+|---|---|---|---|---|
+| ![Dashboard](Screenshots/scholar_dashboard.png) | ![Goals](Screenshots/Scholar_Goals.png) | ![Health](Screenshots/Scholar_Health.png) |![Profile](Screenshots/Scholar_Profile.png)| ![LearningPath](Screenshots/Scholar_Learning_Path.png)|
 
 ## ✨ Features
 
