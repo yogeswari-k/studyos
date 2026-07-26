@@ -32,7 +32,7 @@ Suggested shots: Login, Dashboard, Goals, Health, Learning Path, Profile (light 
 
 | Dashboard | Goals | Health | Profile| Learningpath|
 |---|---|---|---|---|
-| ![Dashboard](Screenshots/scholar_dashboard.png) | ![Goals](Screenshots/Scholar_Goals.png) | ![Health](Screenshots/Scholar_Health.png) |![Profile](Screenshots/Scholar_Profile.png)| ![LearningPath](Screenshots/Scholar_Learning_Path.png)|
+| ![Dashboard](Screenshots/scholar_Dashboard.png) | ![Goals](Screenshots/Scholar_Goals.png) | ![Health](Screenshots/Scholar_Health.png) |![Profile](Screenshots/Scholar_Profile.png)| ![LearningPath](Screenshots/Scholar_Learning_Path.png)|
 
 ## ✨ Features
 
